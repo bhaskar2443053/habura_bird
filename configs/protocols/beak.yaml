@@ -1,0 +1,7 @@
+region: beak
+views:
+  - {name: left_lateral, hint: "Whole beak from tip to gape, scale bar in frame"}
+  - {name: right_lateral}
+  - {name: dorsal}
+quality:
+  min_sharpness: 80

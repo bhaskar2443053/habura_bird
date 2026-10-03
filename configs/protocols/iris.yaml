@@ -1,0 +1,11 @@
+region: iris
+spectra: [rgb, nir]
+views:
+  - {name: left_eye, hint: "Fill the circle with the left eye; keep the IR ring on if attached"}
+  - {name: right_eye, hint: "Fill the circle with the right eye"}
+min_shots_per_view: 2
+quality:
+  min_sharpness: 120
+  max_glare_ratio: 0.05
+  min_short_side_px: 640
+guidance: "No visible flash at the eye. Prefer diffused light or 850 nm IR."

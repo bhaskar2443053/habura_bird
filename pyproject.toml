@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "birdreid"
+version = "0.1.0"
+description = "Multi-region image capture and re-identification framework for houbara bustard"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "numpy>=1.26",
+  "pydantic>=2.5",
+  "pyyaml>=6.0",
+  "pillow>=10.0",
+]
+
+[project.optional-dependencies]
+api = ["fastapi>=0.110", "uvicorn>=0.29"]
+s3 = ["boto3>=1.34"]
+ml = ["torch>=2.2", "torchvision>=0.17", "open_clip_torch>=2.24"]
+ocr = ["paddleocr>=2.7"]
+dev = ["pytest>=8", "ruff>=0.4", "httpx>=0.27", "fastapi>=0.110"]
+
+[tool.setuptools.packages.find]
+include = ["birdreid*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

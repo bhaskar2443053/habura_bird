@@ -1,0 +1,7 @@
+region: ring
+views:
+  - {name: code, hint: "Ring code fully readable; rotate the ring and retake if needed"}
+min_shots_per_view: 2
+quality:
+  min_sharpness: 150
+  max_glare_ratio: 0.03

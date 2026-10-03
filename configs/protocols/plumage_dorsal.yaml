@@ -1,0 +1,6 @@
+region: plumage_dorsal
+views:
+  - {name: back, hint: "Whole back from nape to tail, colour card in frame"}
+quality:
+  min_sharpness: 60
+  max_glare_ratio: 0.02
