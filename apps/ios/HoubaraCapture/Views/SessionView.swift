@@ -115,6 +115,8 @@ struct SessionView: View {
             HStack {
                 Image(systemName: skipped != nil ? "forward.circle" : done ? "checkmark.circle.fill" : "circle")
                     .foregroundStyle(skipped != nil ? Color.orange : done ? Color.green : Color.secondary)
+                BirdReferenceView(region: proto.region, view: view.name, showsCameraHint: false)
+                    .frame(width: 56)
                 VStack(alignment: .leading) {
                     Text(view.title)
                     Group {

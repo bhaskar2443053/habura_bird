@@ -20,6 +20,7 @@ struct CaptureView: View {
     @State private var liveRing: RingMatch?
     @State private var ringReview: RingReview?
     @State private var ringReader = LiveRingReader()
+    @State private var showingReference = false
 
     init(sessionId: String, initialKey: ViewKey) {
         self.sessionId = sessionId
@@ -74,6 +75,11 @@ struct CaptureView: View {
         .onChange(of: key) { applyKey() }
         .onChange(of: settings.autoCapture) { camera.setAutoCapture(autoCaptureAllowed) }
         .onChange(of: camera.current) { spectrum = defaultSpectrum }
+        .sheet(isPresented: $showingReference) {
+            if let viewSpec {
+                BirdReferenceSheet(region: key.region, view: viewSpec)
+            }
+        }
         .sheet(item: $ringReview) { review in
             RingConfirmView(sessionId: sessionId, review: review)
         }
@@ -87,14 +93,27 @@ struct CaptureView: View {
     }
 
     private var instructions: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(viewSpec?.title ?? "Any region").font(.headline)
-            if let hint = viewSpec?.hint, !hint.isEmpty { Text(hint).font(.subheadline) }
-            if let guidance = proto?.guidance, !guidance.isEmpty {
-                Text(guidance).font(.caption).foregroundStyle(.yellow)
+        HStack(alignment: .top, spacing: 10) {
+            // The picture carries the instruction; the text is there for detail.
+            Button {
+                showingReference = true
+            } label: {
+                BirdReferenceView(region: key.region, view: key.view)
+                    .frame(width: 130)
+                    .padding(4)
+                    .background(Color.white.opacity(0.9), in: RoundedRectangle(cornerRadius: 10))
             }
-            if key.region == .other {
-                Text("Not tied to a checklist step; the server classifies it.").font(.caption)
+            .disabled(viewSpec == nil)
+            .accessibilityHint("Shows a larger reference picture")
+            VStack(alignment: .leading, spacing: 4) {
+                Text(viewSpec?.title ?? "Any region").font(.headline)
+                if let hint = viewSpec?.hint, !hint.isEmpty { Text(hint).font(.subheadline) }
+                if let guidance = proto?.guidance, !guidance.isEmpty {
+                    Text(guidance).font(.caption).foregroundStyle(.yellow)
+                }
+                if key.region == .other {
+                    Text("Not tied to a checklist step; the server classifies it.").font(.caption)
+                }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
