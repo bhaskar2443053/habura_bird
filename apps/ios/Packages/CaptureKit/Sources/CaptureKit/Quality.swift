@@ -28,6 +28,14 @@ public struct QualityReport: Codable, Hashable, Sendable {
         case shortSidePx = "short_side_px"
     }
 
+    public init(sharpness: Double, glareRatio: Double, brightness: Double, shortSidePx: Int, failures: [String]) {
+        self.sharpness = sharpness
+        self.glareRatio = glareRatio
+        self.brightness = brightness
+        self.shortSidePx = shortSidePx
+        self.failures = failures
+    }
+
     public var passed: Bool { failures.isEmpty }
 
     /// Ranking score among passing shots of the same view.

@@ -13,6 +13,13 @@ public struct RingMatch: Codable, Hashable, Sendable {
     public var distance: Int
     public var status: Status
 
+    public init(read: String, code: String?, distance: Int, status: Status) {
+        self.read = read
+        self.code = code
+        self.distance = distance
+        self.status = status
+    }
+
     public var confident: Bool { status == .exact || status == .fuzzy }
 }
 

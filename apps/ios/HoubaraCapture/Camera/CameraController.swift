@@ -85,8 +85,9 @@ final class CameraController: NSObject, ObservableObject, @unchecked Sendable {
         if status == .notDetermined {
             status = await AVCaptureDevice.requestAccess(for: .video) ? .authorized : .denied
         }
-        await MainActor.run { authorization = status }
-        guard status == .authorized else { return }
+        let granted = status
+        await MainActor.run { authorization = granted }
+        guard granted == .authorized else { return }
         sessionQueue.async {
             let devices = self.discover()
             if self.input == nil, let first = devices.first(where: { $0.position == .back }) ?? devices.first {
