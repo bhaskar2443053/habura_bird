@@ -1,0 +1,7 @@
+region: face
+views:
+  - {name: left_lateral, hint: "Side of the head, eye and crest in frame"}
+  - {name: right_lateral}
+  - {name: frontal}
+quality:
+  min_sharpness: 80

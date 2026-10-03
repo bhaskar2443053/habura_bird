@@ -1,0 +1,7 @@
+region: wing
+required: false
+views:
+  - {name: left_spread, hint: "Spread wing, primaries visible"}
+  - {name: right_spread}
+quality:
+  min_sharpness: 60

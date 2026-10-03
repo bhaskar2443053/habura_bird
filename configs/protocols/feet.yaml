@@ -1,0 +1,8 @@
+region: feet
+views:
+  - {name: left_dorsal, hint: "Tarsus and toes from above, scale bar in frame"}
+  - {name: right_dorsal}
+  - {name: left_plantar, hint: "Sole of the foot"}
+  - {name: right_plantar}
+quality:
+  min_sharpness: 100

@@ -1,0 +1,6 @@
+region: plumage_ventral
+views:
+  - {name: breast, hint: "Neck ruff and breast, colour card in frame"}
+quality:
+  min_sharpness: 60
+  max_glare_ratio: 0.02
