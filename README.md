@@ -16,8 +16,9 @@ Full design: [docs/design.md](docs/design.md).
 | `birdreid/match` | Per-region gallery kNN, weighted fusion with missing regions, open-set decision |
 | `birdreid/storage` | Cloud object storage (S3 / local) and key layout; metadata schema |
 | `birdreid/api` | Ingest API: issues presigned upload URLs to the iOS app |
+| `apps/ios` | SwiftUI iPhone/iPad capture app (M1): guided checklist, live quality gate, ring OCR, offline upload queue. See [apps/ios/README.md](apps/ios/README.md) |
 
-Not yet built: the iOS capture app (M1), the UVC NIR device adapter and iris unwrapping (M2), the ring OCR engine, and trained per-region models (M3).
+Not yet built: iris unwrapping and NIR-vs-RGB comparison (M2), the server-side ring OCR engine, and trained per-region models (M3).
 
 ## Develop
 

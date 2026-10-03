@@ -1,0 +1,48 @@
+# XcodeGen spec. Generate the Xcode project with:  brew install xcodegen && xcodegen
+name: HoubaraCapture
+options:
+  bundleIdPrefix: org.habura
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+packages:
+  CaptureKit:
+    path: Packages/CaptureKit
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+targets:
+  HoubaraCapture:
+    type: application
+    platform: iOS
+    sources:
+      - path: HoubaraCapture
+    dependencies:
+      - package: CaptureKit
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: org.habura.HoubaraCapture
+        TARGETED_DEVICE_FAMILY: "1,2"
+        CODE_SIGN_STYLE: Automatic
+        # Set your Apple developer team here or in Xcode (Signing & Capabilities).
+        DEVELOPMENT_TEAM: ""
+    info:
+      path: HoubaraCapture/Info.plist
+      properties:
+        CFBundleDisplayName: Houbara Capture
+        UILaunchScreen: {}
+        UIRequiresFullScreen: true
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        UISupportedInterfaceOrientations~ipad: [UIInterfaceOrientationPortrait]
+        # Sessions are kept in Documents/Sessions and can be copied off via the Files app.
+        UIFileSharingEnabled: true
+        LSSupportsOpeningDocumentsInPlace: true
+        NSCameraUsageDescription: Photographs birds (eye, face, beak, plumage, feet and leg ring) for individual re-identification.
+        NSLocationWhenInUseUsageDescription: Records where each capture session took place.
+schemes:
+  HoubaraCapture:
+    build:
+      targets:
+        HoubaraCapture: all

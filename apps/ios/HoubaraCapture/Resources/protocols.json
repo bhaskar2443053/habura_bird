@@ -1,0 +1,218 @@
+{
+  "version": 1,
+  "regions": [
+    {
+      "region": "ring",
+      "spectra": [
+        "rgb"
+      ],
+      "views": [
+        {
+          "name": "code",
+          "hint": "Ring code fully readable; rotate the ring and retake if needed"
+        }
+      ],
+      "min_shots_per_view": 2,
+      "required": true,
+      "quality": {
+        "min_sharpness": 150.0,
+        "max_glare_ratio": 0.03,
+        "min_brightness": 30.0,
+        "max_brightness": 225.0,
+        "min_short_side_px": 256
+      },
+      "guidance": ""
+    },
+    {
+      "region": "face",
+      "spectra": [
+        "rgb"
+      ],
+      "views": [
+        {
+          "name": "left_lateral",
+          "hint": "Side of the head, eye and crest in frame"
+        },
+        {
+          "name": "right_lateral",
+          "hint": ""
+        },
+        {
+          "name": "frontal",
+          "hint": ""
+        }
+      ],
+      "min_shots_per_view": 1,
+      "required": true,
+      "quality": {
+        "min_sharpness": 80.0,
+        "max_glare_ratio": 0.1,
+        "min_brightness": 30.0,
+        "max_brightness": 225.0,
+        "min_short_side_px": 256
+      },
+      "guidance": ""
+    },
+    {
+      "region": "iris",
+      "spectra": [
+        "rgb",
+        "nir"
+      ],
+      "views": [
+        {
+          "name": "left_eye",
+          "hint": "Fill the circle with the left eye; keep the IR ring on if attached"
+        },
+        {
+          "name": "right_eye",
+          "hint": "Fill the circle with the right eye"
+        }
+      ],
+      "min_shots_per_view": 2,
+      "required": true,
+      "quality": {
+        "min_sharpness": 120.0,
+        "max_glare_ratio": 0.05,
+        "min_brightness": 30.0,
+        "max_brightness": 225.0,
+        "min_short_side_px": 640
+      },
+      "guidance": "No visible flash at the eye. Prefer diffused light or 850 nm IR."
+    },
+    {
+      "region": "beak",
+      "spectra": [
+        "rgb"
+      ],
+      "views": [
+        {
+          "name": "left_lateral",
+          "hint": "Whole beak from tip to gape, scale bar in frame"
+        },
+        {
+          "name": "right_lateral",
+          "hint": ""
+        },
+        {
+          "name": "dorsal",
+          "hint": ""
+        }
+      ],
+      "min_shots_per_view": 1,
+      "required": true,
+      "quality": {
+        "min_sharpness": 80.0,
+        "max_glare_ratio": 0.1,
+        "min_brightness": 30.0,
+        "max_brightness": 225.0,
+        "min_short_side_px": 256
+      },
+      "guidance": ""
+    },
+    {
+      "region": "feet",
+      "spectra": [
+        "rgb"
+      ],
+      "views": [
+        {
+          "name": "left_dorsal",
+          "hint": "Tarsus and toes from above, scale bar in frame"
+        },
+        {
+          "name": "right_dorsal",
+          "hint": ""
+        },
+        {
+          "name": "left_plantar",
+          "hint": "Sole of the foot"
+        },
+        {
+          "name": "right_plantar",
+          "hint": ""
+        }
+      ],
+      "min_shots_per_view": 1,
+      "required": true,
+      "quality": {
+        "min_sharpness": 100.0,
+        "max_glare_ratio": 0.1,
+        "min_brightness": 30.0,
+        "max_brightness": 225.0,
+        "min_short_side_px": 256
+      },
+      "guidance": ""
+    },
+    {
+      "region": "plumage_dorsal",
+      "spectra": [
+        "rgb"
+      ],
+      "views": [
+        {
+          "name": "back",
+          "hint": "Whole back from nape to tail, colour card in frame"
+        }
+      ],
+      "min_shots_per_view": 1,
+      "required": true,
+      "quality": {
+        "min_sharpness": 60.0,
+        "max_glare_ratio": 0.02,
+        "min_brightness": 30.0,
+        "max_brightness": 225.0,
+        "min_short_side_px": 256
+      },
+      "guidance": ""
+    },
+    {
+      "region": "plumage_ventral",
+      "spectra": [
+        "rgb"
+      ],
+      "views": [
+        {
+          "name": "breast",
+          "hint": "Neck ruff and breast, colour card in frame"
+        }
+      ],
+      "min_shots_per_view": 1,
+      "required": true,
+      "quality": {
+        "min_sharpness": 60.0,
+        "max_glare_ratio": 0.02,
+        "min_brightness": 30.0,
+        "max_brightness": 225.0,
+        "min_short_side_px": 256
+      },
+      "guidance": ""
+    },
+    {
+      "region": "wing",
+      "spectra": [
+        "rgb"
+      ],
+      "views": [
+        {
+          "name": "left_spread",
+          "hint": "Spread wing, primaries visible"
+        },
+        {
+          "name": "right_spread",
+          "hint": ""
+        }
+      ],
+      "min_shots_per_view": 1,
+      "required": false,
+      "quality": {
+        "min_sharpness": 60.0,
+        "max_glare_ratio": 0.1,
+        "min_brightness": 30.0,
+        "max_brightness": 225.0,
+        "min_short_side_px": 256
+      },
+      "guidance": ""
+    }
+  ]
+}
