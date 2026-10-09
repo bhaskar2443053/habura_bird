@@ -30,6 +30,10 @@ public struct RegionLabel: Codable, Hashable, Sendable {
         case model
         /// Ad-hoc photo outside the checklist; left for the server to classify.
         case unlabelled
+        /// Sorted automatically while photographing freely; not checked by the operator yet.
+        case suggested
+        /// Set or confirmed by the operator on the sorting screen.
+        case operatorChoice = "operator"
     }
 
     public var source: Source
@@ -194,6 +198,36 @@ public struct CaptureSession: Codable, Hashable, Identifiable, Sendable {
 
     public mutating func unskip(_ key: ViewKey) {
         skipped.removeAll { $0.region == key.region && $0.view == key.view }
+    }
+
+    /// Moves a shot to another body part (the operator's correction on the sorting screen).
+    public mutating func relabel(shotId: String, to key: ViewKey) {
+        guard let i = shots.firstIndex(where: { $0.id == shotId }) else { return }
+        shots[i].region = key.region
+        shots[i].view = key.view
+        shots[i].label.source = .operatorChoice
+        unskip(key)
+    }
+
+    /// The operator looked over the automatic sorting and accepted it.
+    public mutating func confirmSuggestions() {
+        for i in shots.indices where shots[i].label.source == .suggested {
+            shots[i].label.source = .operatorChoice
+        }
+    }
+
+    /// Automatically sorted shots the operator hasn't checked yet.
+    public var shotsToCheck: [Shot] { shots.filter { $0.label.source == .suggested } }
+
+    /// The next required view still to photograph, continuing through the checklist from `key`
+    /// (wrapping round), so free photographing walks the bird in order without going back.
+    public func nextPending(after key: ViewKey, in protocols: ProtocolSet) -> ViewKey? {
+        let order = protocols.regions.flatMap { proto in proto.views.map { ViewKey(proto.region, $0.name) } }
+        let todo = Set(pending(protocols))
+        guard !todo.isEmpty else { return nil }
+        let start = (order.firstIndex(of: key) ?? -1) + 1
+        let rotated = order[min(start, order.count)...] + order[..<min(start, order.count)]
+        return rotated.first { todo.contains($0) && $0 != key } ?? (todo.contains(key) ? key : nil)
     }
 
     public func isSkipped(_ key: ViewKey) -> Bool {

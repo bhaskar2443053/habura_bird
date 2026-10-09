@@ -40,6 +40,7 @@ struct HoubaraCaptureApp: App {
                 .environmentObject(model.settings)
                 .environmentObject(model.store)
                 .environmentObject(model.uploader)
+                .environmentObject(model.heat)
         }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { model.uploader.kick() }

@@ -2,15 +2,22 @@ import AVFoundation
 import CaptureKit
 import SwiftUI
 
-/// Guided capture for one view of one region: live preview with a guide shape, the live quality
-/// gate, auto-capture when the gate holds, and the shots taken so far.
+/// Camera screen. Free mode (the default from the session screen) photographs the whole bird
+/// without stopping: each photo is sorted into a body part automatically and the highlighted part
+/// moves on by itself, so nobody has to go back to the checklist while holding the bird. Guided
+/// mode (a checklist row) stays on one view. Both show the live quality gate, auto-capture and
+/// the camera slows down or pauses when the phone gets hot or sits idle.
 struct CaptureView: View {
     let sessionId: String
+    /// Sort photos automatically and walk through the checklist on its own.
+    let free: Bool
+    /// In free mode: the part highlighted as the one being photographed now.
     @State private var key: ViewKey
 
     @EnvironmentObject private var model: AppModel
     @EnvironmentObject private var store: SessionStore
     @EnvironmentObject private var settings: AppSettings
+    @EnvironmentObject private var heat: HeatMonitor
     @StateObject private var camera = CameraController()
     @State private var spectrum: Spectrum = .rgb
     @State private var busy = false
@@ -21,9 +28,14 @@ struct CaptureView: View {
     @State private var ringReview: RingReview?
     @State private var ringReader = LiveRingReader()
     @State private var showingReference = false
+    @State private var lastSortedId: String?
+    @State private var moving: Shot?
+    @State private var paused = false
+    @State private var lastActivity = Date()
 
-    init(sessionId: String, initialKey: ViewKey) {
+    init(sessionId: String, initialKey: ViewKey, free: Bool = false) {
         self.sessionId = sessionId
+        self.free = free
         _key = State(initialValue: initialKey)
     }
 
@@ -32,6 +44,7 @@ struct CaptureView: View {
     private var thresholds: QualityThresholds { proto?.quality ?? QualityThresholds() }
     private var session: CaptureSession? { store.session(sessionId) }
     private var autoCaptureAllowed: Bool { settings.autoCapture && key.region != .other }
+    private var load: CameraLoad { heat.load }
 
     private var nextKey: ViewKey? {
         session?.pending(model.protocols).first { $0 != key }
@@ -52,19 +65,33 @@ struct CaptureView: View {
             }
             if flash { Color.white.ignoresSafeArea().transition(.opacity) }
             VStack(spacing: 0) {
+                if free { partStrip }
                 instructions
+                if let message = CameraLoad.message(for: heat.heat) {
+                    Label(message, systemImage: "thermometer.sun.fill")
+                        .font(.footnote.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                        .padding(8)
+                        .background(heat.heat == .critical ? Color.red : Color.orange)
+                        .foregroundStyle(.white)
+                }
                 Spacer()
                 controls
             }
+            if paused { pausedOverlay }
         }
-        .navigationTitle(key.region == .other ? "Extra photo" : key.region.title)
+        .simultaneousGesture(TapGesture().onEnded { lastActivity = Date() })
+        .navigationTitle(free ? "Photograph bird" : key.region == .other ? "Extra photo" : key.region.title)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) { cameraMenu }
         }
-        .task { await camera.start() }
+        .task { await resume() }
+        .task(id: paused) { await watchIdle() }
         .onAppear {
             camera.onAutoCapture = { take() }
+            camera.setLoad(load)
+            ringReader.setInterval(load.ringReadInterval)
             applyKey()
         }
         .onDisappear {
@@ -73,6 +100,14 @@ struct CaptureView: View {
             camera.stop()
         }
         .onChange(of: key) { applyKey() }
+        .onChange(of: heat.heat) {
+            camera.setLoad(load)
+            ringReader.setInterval(load.ringReadInterval)
+            if load.paused { pause() }
+        }
+        .sheet(item: $moving) { shot in
+            MovePhotoSheet(sessionId: sessionId, shot: shot)
+        }
         .onChange(of: settings.autoCapture) { camera.setAutoCapture(autoCaptureAllowed) }
         .onChange(of: camera.current) { spectrum = defaultSpectrum }
         .sheet(isPresented: $showingReference) {
@@ -99,7 +134,7 @@ struct CaptureView: View {
                 showingReference = true
             } label: {
                 BirdReferenceView(region: key.region, view: key.view)
-                    .frame(width: 130)
+                    .frame(width: free ? 90 : 130)
                     .padding(4)
                     .background(Color.white.opacity(0.9), in: RoundedRectangle(cornerRadius: 10))
             }
@@ -122,6 +157,73 @@ struct CaptureView: View {
         .foregroundStyle(.primary)
     }
 
+    /// Every checklist view as a picture chip; the highlighted one is what the next photo is
+    /// sorted into unless the photo itself says otherwise. Tap to jump.
+    private var partStrip: some View {
+        let session = session
+        return ScrollViewReader { proxy in
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 6) {
+                    ForEach(PartChoice.all(model.protocols)) { choice in
+                        let done = session?.isDone(choice.key, in: model.protocols) == true
+                        let count = session?.shots(for: choice.key).count ?? 0
+                        Button {
+                            key = choice.key
+                            lastActivity = Date()
+                        } label: {
+                            VStack(spacing: 2) {
+                                BirdReferenceView(region: choice.key.region, view: choice.key.view, showsCameraHint: false)
+                                    .frame(width: 58, height: 44)
+                                HStack(spacing: 2) {
+                                    if done { Image(systemName: "checkmark.circle.fill").foregroundStyle(.green) }
+                                    Text(count > 0 ? "\(count)" : " ").monospacedDigit()
+                                }
+                                .font(.caption2)
+                            }
+                            .padding(4)
+                            .background(Color.white.opacity(choice.key == key ? 0.95 : 0.6), in: RoundedRectangle(cornerRadius: 8))
+                            .overlay(RoundedRectangle(cornerRadius: 8).stroke(choice.key == key ? Color.orange : .clear, lineWidth: 3))
+                            .foregroundStyle(.black)
+                        }
+                        .id(choice.key)
+                        .accessibilityLabel(choice.title + (done ? ", done" : ""))
+                    }
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 6)
+            }
+            .background(.black.opacity(0.5))
+            .onChange(of: key) { withAnimation { proxy.scrollTo(key, anchor: .center) } }
+            .onAppear { proxy.scrollTo(key, anchor: .center) }
+        }
+    }
+
+    private var pausedOverlay: some View {
+        VStack(spacing: 14) {
+            Image(systemName: heat.heat >= .serious ? "thermometer.sun.fill" : "pause.circle")
+                .font(.system(size: 48))
+            Text(heat.heat == .critical ? "Phone is too hot" : "Camera paused")
+                .font(.title3.weight(.semibold))
+            Text(heat.heat == .critical
+                 ? "Put the phone in shade for a few minutes. Photos taken so far are saved."
+                 : "Paused to keep the phone cool while no photos are being taken.")
+                .multilineTextAlignment(.center)
+                .font(.subheadline)
+            Button {
+                Task { await resume() }
+            } label: {
+                Label(heat.heat == .critical ? "Use camera anyway" : "Continue", systemImage: "camera.fill")
+                    .font(.headline)
+                    .padding(.horizontal, 20).padding(.vertical, 10)
+            }
+            .buttonStyle(.borderedProminent)
+        }
+        .foregroundStyle(.white)
+        .padding(32)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color.black.opacity(0.92))
+    }
+
     private var controls: some View {
         VStack(spacing: 10) {
             if let quality = camera.liveQuality {
@@ -136,6 +238,21 @@ struct CaptureView: View {
             }
             if let feedback {
                 Text(feedback).font(.footnote).foregroundStyle(.white).multilineTextAlignment(.center)
+            }
+            if free, let lastSorted = session?.shots.first(where: { $0.id == lastSortedId }) {
+                Button {
+                    moving = lastSorted
+                } label: {
+                    HStack(spacing: 8) {
+                        ThumbnailView(url: store.imageURL(sessionId, lastSorted), size: 34)
+                        Text("Saved as \(PartChoice.title(ViewKey(lastSorted.region, lastSorted.view), model.protocols))")
+                        Text("Change").underline()
+                    }
+                    .font(.footnote.weight(.semibold))
+                    .padding(.horizontal, 10).padding(.vertical, 4)
+                    .background(Color.white.opacity(0.9), in: Capsule())
+                    .foregroundStyle(.black)
+                }
             }
             if let classifierWarning {
                 Text(classifierWarning).font(.footnote).foregroundStyle(.orange).multilineTextAlignment(.center)
@@ -164,7 +281,7 @@ struct CaptureView: View {
                 VStack(spacing: 8) {
                     Toggle("Auto", isOn: $settings.autoCapture).labelsHidden()
                     Text("Auto").font(.caption2).foregroundStyle(.white)
-                    if let next = nextKey, session?.isDone(key, in: model.protocols) == true {
+                    if !free, let next = nextKey, session?.isDone(key, in: model.protocols) == true {
                         Button("Next") { key = next }
                             .buttonStyle(.borderedProminent)
                     }
@@ -259,12 +376,42 @@ struct CaptureView: View {
         }
     }
 
+    // MARK: Heat and idle
+
+    private func resume() async {
+        lastActivity = Date()
+        paused = false
+        await camera.start()
+    }
+
+    private func pause() {
+        guard !paused else { return }
+        paused = true
+        camera.stop()
+    }
+
+    /// The camera is the main heat source: stop it when nothing has been photographed or tapped
+    /// for a while (the bird is being handled, ringed or measured).
+    private func watchIdle() async {
+        while !paused, !Task.isCancelled {
+            try? await Task.sleep(for: .seconds(5))
+            if busy || ringReview != nil || moving != nil || showingReference {
+                lastActivity = Date()
+            } else if Date().timeIntervalSince(lastActivity) >= load.idlePauseAfter {
+                pause()
+            }
+        }
+    }
+
     private func take() {
-        guard !busy, session != nil else { return }
+        guard !busy, !paused, session != nil else { return }
         busy = true
-        let key = key
+        lastActivity = Date()
+        let target = key
+        let free = free
         let spectrum = spectrum
         let thresholds = thresholds
+        let registry = model.ringRegistry
         Task {
             defer { busy = false }
             do {
@@ -277,23 +424,40 @@ struct CaptureView: View {
                     StillAnalysis.analyse(data, thresholds: thresholds)
                 }.value
 
-                var label = RegionLabel(source: key.region == .other ? .unlabelled : .checklist)
+                var label = RegionLabel(source: free ? .suggested : target.region == .other ? .unlabelled : .checklist)
                 var warning: String?
+                var guess: (Region, Double)?
                 if let image = analysis.image {
                     let orientation = FrameConversion.orientation(of: data)
-                    let guess = await Task.detached(priority: .userInitiated) {
+                    guess = await Task.detached(priority: .userInitiated) {
                         RegionClassifier.shared.classify(image, orientation: orientation)
                     }.value
                     if let guess {
                         let (region, confidence) = guess
                         label.modelRegion = region
                         label.modelConfidence = confidence
-                        if key.region == .other {
+                        if !free, target.region == .other {
                             label.source = .model
-                        } else if region != key.region, confidence >= 0.6 {
+                        } else if !free, region != target.region, confidence >= RegionSuggester.modelThreshold {
                             warning = "This looks like \(region.title) (\(Int(confidence * 100))%). Delete it if it was taken by mistake."
                         }
                     }
+                }
+
+                // Free mode: a ring code in the photo means it's the ring photo, whatever part is
+                // highlighted.
+                var key = target
+                if free, let before = store.session(sessionId) {
+                    var ringSeen = false
+                    if target.region != .ring {
+                        let reads = await Task.detached(priority: .userInitiated) {
+                            RingOCR.quickCandidates(in: data)
+                        }.value
+                        ringSeen = RegionSuggester.looksLikeRingCode(reads, registry: registry)
+                    }
+                    key = RegionSuggester.suggest(
+                        target: target, ringCodeSeen: ringSeen, model: guess, session: before, protocols: model.protocols
+                    )
                 }
 
                 let shotId = newID()
@@ -312,11 +476,34 @@ struct CaptureView: View {
                     : "Kept, but: " + analysis.quality.failures.map(Quality.advice).joined(separator: ". ")
                 classifierWarning = warning
 
+                if free {
+                    lastSortedId = shot.id
+                    // Move on once the highlighted part has enough good photos.
+                    if current.isDone(target, in: model.protocols) {
+                        if let next = current.nextPending(after: target, in: model.protocols) {
+                            self.key = next
+                        } else {
+                            feedback = "Every part has a good photo. Go back to finish, or keep shooting."
+                        }
+                    }
+                }
+
                 if key.region == .ring, current.ringRead?.match?.confident != true {
                     let candidates = await Task.detached(priority: .userInitiated) {
                         RingOCR.candidates(in: data)
                     }.value
-                    ringReview = RingReview(shotId: shotId, candidates: candidates)
+                    if free {
+                        // Don't interrupt the handling: take a confident registry read silently,
+                        // otherwise the code is confirmed later on the sorting screen.
+                        if let match = registry.bestMatch(candidates), match.confident, let code = match.code,
+                           var latest = store.session(sessionId) {
+                            latest.ringRead = RingRead(code: code, match: match, source: "vision", shotId: shotId)
+                            store.save(latest)
+                            feedback = "Ring \(code) read"
+                        }
+                    } else {
+                        ringReview = RingReview(shotId: shotId, candidates: candidates)
+                    }
                 }
             } catch {
                 feedback = error.localizedDescription
@@ -330,5 +517,23 @@ private struct GuideShape: Shape {
 
     func path(in rect: CGRect) -> Path {
         circle ? Path(ellipseIn: rect) : Path(roundedRect: rect, cornerRadius: 16)
+    }
+}
+
+/// Free photographing, starting at the first part that still needs photos.
+struct PhotographView: View {
+    let sessionId: String
+    @EnvironmentObject private var model: AppModel
+    @EnvironmentObject private var store: SessionStore
+
+    var body: some View {
+        CaptureView(sessionId: sessionId, initialKey: start, free: true)
+    }
+
+    private var start: ViewKey {
+        let session = store.session(sessionId)
+        return session?.pending(model.protocols).first
+            ?? PartChoice.all(model.protocols).first?.key
+            ?? ViewKey(.other, "adhoc")
     }
 }

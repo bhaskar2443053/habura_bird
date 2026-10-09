@@ -12,6 +12,7 @@ final class AppModel: ObservableObject {
     let store: SessionStore
     let uploader: Uploader
     let location = LocationProvider()
+    let heat = HeatMonitor()
     @Published private(set) var ringRegistry: RingRegistry
 
     private let registryURL: URL

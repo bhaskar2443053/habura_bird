@@ -20,15 +20,24 @@ bird per session, an on-device quality gate, ring OCR, and offline-first upload 
    it against the site's ring registry (tolerant of O/0, I/1, S/5 … confusions, same rules as
    `birdreid.ocr.registry`), and the operator confirms or corrects it. The server re-reads the ring
    and stays authoritative.
-5. **Region labels**: every photo is labelled with the checklist step it was taken in; "Extra photos"
-   are left unlabelled for the server's classifier. If a Core ML model named `RegionClassifier` is
-   added to the target, the app also classifies each photo on-device and warns when a photo doesn't
-   look like the region being captured.
+5. **Photograph bird (free mode, the default)**: one camera screen for the whole bird. A strip of
+   part pictures shows what to shoot next; each photo is sorted into a body part automatically
+   (`label.source = "suggested"`) and the highlight moves on once a part has enough good shots, so
+   the operator never goes back to the checklist while holding the bird. A ring code seen in a photo
+   (Vision OCR) sends it to the ring, and a bundled `RegionClassifier` Core ML model, once trained,
+   overrides the walk-through position when confident. A confident ring read against the registry
+   is taken without a pop-up. **Sort photos** afterwards shows every photo under its part: tap one
+   to move it (`source = "operator"`) or accept all. Tapping a checklist row still opens a camera
+   for just that view (`source = "checklist"`). The server re-classifies every photo regardless.
 6. **Upload**: on Finish, images and then `session.json` are queued. The queue survives restarts,
    retries with back-off, and hands files to a background `URLSession`, so uploads finish even with
    the phone locked. Files go straight to S3 through presigned URLs from the ingest API; the
    manifest is uploaded last, so its presence in the bucket means the session is complete.
-7. **USB-C NIR camera** (iPad on iPadOS 17+, possibly iPhone on iOS 26): plugging in a UVC camera
+7. **Heat**: phones in direct sun overheat. The preview runs at 24 fps (15 when hot), the live
+   quality check reads every 4th frame (every 6th when hot), hot phones take balanced rather than
+   multi-frame stills, start no new uploads, and show a warning. The camera pauses after 45 s
+   without a photo or tap (20 s when hot) and at the critical thermal state; one tap resumes.
+8. **USB-C NIR camera** (iPad on iPadOS 17+, possibly iPhone on iOS 26): plugging in a UVC camera
    switches to it automatically, and the operator marks shots as Near-IR or Visible.
 
 Object keys match the server: `raw/{site}/{session_id}/{region}/{view}_{spectrum}_{shot_id}.jpg`

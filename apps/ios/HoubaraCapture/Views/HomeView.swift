@@ -4,6 +4,9 @@ import SwiftUI
 enum Route: Hashable {
     case session(String)
     case capture(String, ViewKey)
+    /// Free photographing: photos are sorted into body parts automatically.
+    case photograph(String)
+    case sort(String)
     case uploads
     case settings
 }
@@ -67,6 +70,8 @@ struct HomeView: View {
                 switch route {
                 case let .session(id): SessionView(sessionId: id, path: $path)
                 case let .capture(id, key): CaptureView(sessionId: id, initialKey: key)
+                case let .photograph(id): PhotographView(sessionId: id)
+                case let .sort(id): SortPhotosView(sessionId: id)
                 case .uploads: UploadsView()
                 case .settings: SettingsView()
                 }
@@ -130,7 +135,7 @@ struct NewSessionView: View {
                     TextField("Notes (optional)", text: $notes, axis: .vertical)
                 }
                 Section {
-                    Text("Start with the leg ring: a confident read identifies the bird. Keep handling short; you can finish at any point and the photos taken so far are kept.")
+                    Text("Photograph the parts in any order; each photo is sorted into a body part for you, and you can check the sorting after the bird is released. A clear leg ring photo identifies the bird. Keep handling short; the photos taken so far are always kept.")
                         .font(.footnote).foregroundStyle(.secondary)
                 }
             }

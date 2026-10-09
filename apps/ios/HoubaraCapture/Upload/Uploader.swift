@@ -102,6 +102,9 @@ final class Uploader: NSObject, ObservableObject {
             return
         }
         guard isOnline else { return }
+        // The radio adds heat; a hot phone finishes what's running and starts nothing new;
+        // the retry timer picks the queue up again once it cools.
+        guard !CameraLoad.forHeat(HeatMonitor.current).holdUploads else { return }
         for job in await queue.claim() {
             let fileURL = dataRoot.appendingPathComponent(job.filePath)
             guard FileManager.default.fileExists(atPath: fileURL.path) else {

@@ -4,6 +4,7 @@ import SwiftUI
 struct UploadsView: View {
     @EnvironmentObject private var uploader: Uploader
     @EnvironmentObject private var settings: AppSettings
+    @EnvironmentObject private var heat: HeatMonitor
 
     var body: some View {
         let waiting = uploader.jobs.filter { $0.state != .done }
@@ -15,6 +16,10 @@ struct UploadsView: View {
                 LabeledContent("Uploaded", value: "\(done)")
                 if let error = uploader.lastError {
                     Text(error).font(.footnote).foregroundStyle(.red)
+                }
+                if heat.load.holdUploads, !waiting.isEmpty {
+                    Text("Uploads are paused while the phone is hot and continue once it cools.")
+                        .font(.footnote).foregroundStyle(.orange)
                 }
                 if settings.ingestClient == nil {
                     Text("No server address set. Photos are kept on the phone until one is added in Settings.")

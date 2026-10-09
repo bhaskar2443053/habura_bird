@@ -50,12 +50,14 @@ final class CameraController: NSObject, ObservableObject, @unchecked Sendable {
     private let videoOutput = AVCaptureVideoDataOutput()
     private var input: AVCaptureDeviceInput?
     private var inFlight: [Int64: PhotoCaptureDelegate] = [:]  // sessionQueue
+    private var load = CameraLoad.forHeat(.nominal)  // sessionQueue
 
     // analysisQueue state
     private var thresholds = QualityThresholds()
     private var trigger = AutoCaptureTrigger()
     private var autoCaptureEnabled = false
     private var frameIndex = 0
+    private var analyseEvery = CameraLoad.forHeat(.nominal).analyseEvery
     private var frameObserver: ((CVPixelBuffer) -> Void)?
     private var snapshotWaiters: [CheckedContinuation<Data?, Never>] = []
 
@@ -127,6 +129,15 @@ final class CameraController: NSObject, ObservableObject, @unchecked Sendable {
         }
     }
 
+    /// Frame rate, live analysis rate and still processing for the phone's current heat.
+    func setLoad(_ value: CameraLoad) {
+        analysisQueue.async { self.analyseEvery = max(1, value.analyseEvery) }
+        sessionQueue.async {
+            self.load = value
+            if let device = self.input?.device { self.applyFrameRate(device) }
+        }
+    }
+
     /// Receives every preview frame on the analysis queue; the observer throttles itself.
     func setFrameObserver(_ observer: ((CVPixelBuffer) -> Void)?) {
         analysisQueue.async { self.frameObserver = observer }
@@ -179,7 +190,10 @@ final class CameraController: NSObject, ObservableObject, @unchecked Sendable {
                     settings = AVCapturePhotoSettings()
                 }
                 // Flash stays at its default (off): no visible flash at the eye (welfare rule).
-                settings.photoQualityPrioritization = self.photoOutput.maxPhotoQualityPrioritization
+                // Multi-frame fusion costs heat on every shot; a hot phone takes balanced stills.
+                let best = self.photoOutput.maxPhotoQualityPrioritization
+                settings.photoQualityPrioritization = self.load.bestStillQuality || best.rawValue < AVCapturePhotoOutput.QualityPrioritization.balanced.rawValue
+                    ? best : .balanced
                 settings.maxPhotoDimensions = self.photoOutput.maxPhotoDimensions
                 let id = settings.uniqueID
                 let delegate = PhotoCaptureDelegate(
@@ -264,12 +278,26 @@ final class CameraController: NSObject, ObservableObject, @unchecked Sendable {
             device.isSubjectAreaChangeMonitoringEnabled = true
             device.unlockForConfiguration()
         } catch {}
+        applyFrameRate(device)
 
         let option = CameraOption(id: device.uniqueID, name: device.localizedName, isExternal: device.deviceType == .external)
         DispatchQueue.main.async {
             self.current = option
             self.errorMessage = nil
         }
+    }
+
+    /// Caps the preview frame rate (the sensor and image pipeline are the main heat source).
+    /// Only the minimum frame duration is set, so auto-exposure can still slow down in shade.
+    private func applyFrameRate(_ device: AVCaptureDevice) {
+        let fps = Double(load.framesPerSecond)
+        guard device.activeFormat.videoSupportedFrameRateRanges.contains(where: { $0.minFrameRate <= fps && fps <= $0.maxFrameRate })
+        else { return }
+        do {
+            try device.lockForConfiguration()
+            device.activeVideoMinFrameDuration = CMTime(value: 1, timescale: CMTimeScale(load.framesPerSecond))
+            device.unlockForConfiguration()
+        } catch {}
     }
 
     private func report(_ message: String) {
@@ -315,7 +343,7 @@ extension CameraController: AVCaptureVideoDataOutputSampleBufferDelegate {
         frameObserver?(buffer)
 
         frameIndex += 1
-        guard frameIndex % 3 == 0, let gray = FrameConversion.centerLuma(of: buffer, side: 512) else { return }
+        guard frameIndex % analyseEvery == 0, let gray = FrameConversion.centerLuma(of: buffer, side: 512) else { return }
         // Resolution is only checked on the still; the preview is always smaller.
         let report = Quality.assess(gray, shortSidePx: .max, thresholds: thresholds)
         let fire = autoCaptureEnabled && trigger.feed(passed: report.passed)

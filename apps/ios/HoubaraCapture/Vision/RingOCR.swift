@@ -21,6 +21,14 @@ enum RingOCR {
         return seen
     }
 
+    /// One fast pass over a still, used to notice a ring in photos taken while photographing
+    /// freely. Cheap enough to run on every shot.
+    static func quickCandidates(in jpeg: Data) -> [String] {
+        guard let image = FrameConversion.cgImage(from: jpeg) else { return [] }
+        let handler = VNImageRequestHandler(cgImage: image, orientation: FrameConversion.orientation(of: jpeg))
+        return recognize(with: handler, level: .fast)
+    }
+
     /// Candidate codes in a live preview frame (portrait phone: buffer orientation `.right`).
     static func candidates(in buffer: CVPixelBuffer, orientation: CGImagePropertyOrientation = .right) -> [String] {
         recognize(with: VNImageRequestHandler(cvPixelBuffer: buffer, orientation: orientation), level: .fast)
@@ -60,11 +68,18 @@ final class LiveRingReader: @unchecked Sendable {  // state guarded by `lock`
     private let lock = NSLock()
     private var lastRun = Date.distantPast
     private var busy = false
-    private let interval: TimeInterval
+    private var interval: TimeInterval
     private let queue = DispatchQueue(label: "ring.ocr", qos: .utility)
 
     init(interval: TimeInterval = 1.0) {
         self.interval = interval
+    }
+
+    /// Reads less often when the phone is hot.
+    func setInterval(_ seconds: TimeInterval) {
+        lock.lock()
+        interval = seconds
+        lock.unlock()
     }
 
     /// Call from the camera's analysis queue with each frame.

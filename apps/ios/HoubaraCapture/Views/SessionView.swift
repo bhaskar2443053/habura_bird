@@ -23,7 +23,29 @@ struct SessionView: View {
 
     private func content(_ session: CaptureSession) -> some View {
         let pending = session.pending(model.protocols)
+        let toCheck = session.shotsToCheck.count
         return List {
+            Section {
+                NavigationLink(value: Route.photograph(session.id)) {
+                    Label("Photograph bird", systemImage: "camera.fill").font(.headline)
+                }
+                if !session.shots.isEmpty {
+                    NavigationLink(value: Route.sort(session.id)) {
+                        LabeledContent {
+                            if toCheck > 0 {
+                                Text("\(toCheck) to check").foregroundStyle(.orange)
+                            } else {
+                                Text("\(session.shots.count)")
+                            }
+                        } label: {
+                            Label("Sort photos", systemImage: "square.grid.2x2")
+                        }
+                    }
+                }
+            } footer: {
+                Text("Take photos in any order without coming back here; they're sorted into body parts for you. Tap a part below to photograph only that part.")
+            }
+
             Section("Bird") {
                 if let ring = session.ringRead {
                     LabeledContent("Ring") {
