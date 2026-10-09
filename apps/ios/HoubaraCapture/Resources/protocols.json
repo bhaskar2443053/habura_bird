@@ -31,11 +31,11 @@
       "views": [
         {
           "name": "left_lateral",
-          "hint": "Side of the head, eye and crest in frame"
+          "hint": "The bird's own left side of the head (beak points to the left of the screen), eye and crest in frame"
         },
         {
           "name": "right_lateral",
-          "hint": ""
+          "hint": "The bird's own right side of the head (beak points to the right of the screen)"
         },
         {
           "name": "frontal",
@@ -62,11 +62,11 @@
       "views": [
         {
           "name": "left_eye",
-          "hint": "Fill the circle with the left eye; keep the IR ring on if attached"
+          "hint": "The bird's own left eye (head upright: beak points to the left of the screen). Fill the circle; keep the IR ring on if attached"
         },
         {
           "name": "right_eye",
-          "hint": "Fill the circle with the right eye"
+          "hint": "The bird's own right eye (head upright: beak points to the right of the screen). Fill the circle"
         }
       ],
       "min_shots_per_view": 2,

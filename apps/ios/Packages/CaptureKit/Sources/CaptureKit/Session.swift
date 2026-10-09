@@ -209,6 +209,18 @@ public struct CaptureSession: Codable, Hashable, Identifiable, Sendable {
         unskip(key)
     }
 
+    /// Swaps every left and right photo of a region (left/right confused for a whole session).
+    public mutating func swapSides(of region: Region) {
+        for i in shots.indices where shots[i].region == region {
+            guard let other = ViewSpec(name: shots[i].view).mirroredName else { continue }
+            shots[i].view = other
+            shots[i].label.source = .operatorChoice
+        }
+        for i in skipped.indices where skipped[i].region == region {
+            if let other = ViewSpec(name: skipped[i].view).mirroredName { skipped[i].view = other }
+        }
+    }
+
     /// The operator looked over the automatic sorting and accepted it.
     public mutating func confirmSuggestions() {
         for i in shots.indices where shots[i].label.source == .suggested {

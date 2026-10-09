@@ -58,6 +58,7 @@ final class CameraController: NSObject, ObservableObject, @unchecked Sendable {
     private var autoCaptureEnabled = false
     private var frameIndex = 0
     private var analyseEvery = CameraLoad.forHeat(.nominal).analyseEvery
+    private var eyeCheck = false
     private var frameObserver: ((CVPixelBuffer) -> Void)?
     private var snapshotWaiters: [CheckedContinuation<Data?, Never>] = []
 
@@ -125,6 +126,14 @@ final class CameraController: NSObject, ObservableObject, @unchecked Sendable {
     func setAutoCapture(_ enabled: Bool) {
         analysisQueue.async {
             self.autoCaptureEnabled = enabled
+            self.trigger.reset()
+        }
+    }
+
+    /// Require a pupil-sized eye in the frame (iris views).
+    func setEyeCheck(_ enabled: Bool) {
+        analysisQueue.async {
+            self.eyeCheck = enabled
             self.trigger.reset()
         }
     }
@@ -343,9 +352,14 @@ extension CameraController: AVCaptureVideoDataOutputSampleBufferDelegate {
         frameObserver?(buffer)
 
         frameIndex += 1
-        guard frameIndex % analyseEvery == 0, let gray = FrameConversion.centerLuma(of: buffer, side: 512) else { return }
+        let short = min(CVPixelBufferGetWidth(buffer), CVPixelBufferGetHeight(buffer))
+        let side = Int(Double(short) * FrameConversion.gateFraction)
+        guard frameIndex % analyseEvery == 0, let gray = FrameConversion.centerLuma(of: buffer, side: side) else { return }
         // Resolution is only checked on the still; the preview is always smaller.
-        let report = Quality.assess(gray, shortSidePx: .max, thresholds: thresholds)
+        var report = Quality.assess(gray, shortSidePx: .max, thresholds: thresholds)
+        if eyeCheck, let whole = FrameConversion.downscaledLuma(of: buffer) {
+            Quality.checkEyeSize(whole, report: &report)
+        }
         let fire = autoCaptureEnabled && trigger.feed(passed: report.passed)
         DispatchQueue.main.async {
             self.liveQuality = report

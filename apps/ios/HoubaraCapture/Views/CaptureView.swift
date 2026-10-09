@@ -360,6 +360,7 @@ struct CaptureView: View {
 
     private func applyKey() {
         camera.setThresholds(thresholds)
+        camera.setEyeCheck(key.region == .iris)
         camera.setAutoCapture(autoCaptureAllowed)
         spectrum = defaultSpectrum
         feedback = nil
@@ -420,8 +421,9 @@ struct CaptureView: View {
                 withAnimation(.easeIn(duration: 0.25).delay(0.15)) { flash = false }
 
                 let data = photo.data
+                let checkEye = target.region == .iris
                 let analysis = await Task.detached(priority: .userInitiated) {
-                    StillAnalysis.analyse(data, thresholds: thresholds)
+                    StillAnalysis.analyse(data, thresholds: thresholds, checkEye: checkEye)
                 }.value
 
                 var label = RegionLabel(source: free ? .suggested : target.region == .other ? .unlabelled : .checklist)

@@ -1,7 +1,7 @@
 region: face
 views:
-  - {name: left_lateral, hint: "Side of the head, eye and crest in frame"}
-  - {name: right_lateral}
+  - {name: left_lateral, hint: "The bird's own left side of the head (beak points to the left of the screen), eye and crest in frame"}
+  - {name: right_lateral, hint: "The bird's own right side of the head (beak points to the right of the screen)"}
   - {name: frontal}
 quality:
   min_sharpness: 80

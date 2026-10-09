@@ -10,8 +10,22 @@ public struct ViewSpec: Codable, Hashable, Sendable {
         self.hint = hint
     }
 
+    /// "left_eye" → "Bird's left eye": left and right are always the bird's own, not the
+    /// photographer's (field sessions had every eye photo swapped).
     public var title: String {
-        name.replacingOccurrences(of: "_", with: " ").capitalized
+        let words = name.split(separator: "_").map(String.init)
+        guard let first = words.first else { return name }
+        if first == "left" || first == "right" {
+            return (["Bird's", first] + words.dropFirst()).joined(separator: " ")
+        }
+        return words.joined(separator: " ").capitalized
+    }
+
+    /// The same view on the bird's other side (`left_eye` ↔ `right_eye`), if the name has a side.
+    public var mirroredName: String? {
+        if name.hasPrefix("left_") { return "right_" + name.dropFirst(5) }
+        if name.hasPrefix("right_") { return "left_" + name.dropFirst(6) }
+        return nil
     }
 }
 

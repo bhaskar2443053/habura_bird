@@ -75,6 +75,19 @@ struct SortPhotosView: View {
                                     .frame(width: 48)
                             }
                             Text(PartChoice.title(key, model.protocols)).font(.headline)
+                            Spacer()
+                            if firstSidedGroup(of: key.region, in: groups) == key {
+                                Button {
+                                    var updated = session
+                                    updated.swapSides(of: key.region)
+                                    store.save(updated)
+                                } label: {
+                                    Label("Swap left/right", systemImage: "arrow.left.arrow.right")
+                                        .font(.caption)
+                                }
+                                .buttonStyle(.bordered)
+                                .accessibilityHint("Moves every left \(key.region.title.lowercased()) photo to right and back")
+                            }
                         }
                         LazyVGrid(columns: columns, alignment: .leading, spacing: 8) {
                             ForEach(shots) { shot in
@@ -137,6 +150,12 @@ struct SortPhotosView: View {
             }
         }
         .frame(width: 96, height: 96)
+    }
+
+    /// Where to offer "Swap left/right" for a region: its first group with a sided view, so a
+    /// session with left and right mixed up can be fixed in one tap.
+    private func firstSidedGroup(of region: Region, in groups: [(ViewKey, [Shot])]) -> ViewKey? {
+        groups.map(\.0).first { $0.region == region && ViewSpec(name: $0.view).mirroredName != nil }
     }
 
     /// Photos grouped by view in checklist order, extra photos last.

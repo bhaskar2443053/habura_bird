@@ -102,6 +102,67 @@ public enum Quality {
         return report
     }
 
+    /// Smallest pupil, as a fraction of the photo's short side, for an eye close-up. An eye that
+    /// fills the guide circle has a pupil of roughly 0.2–0.3; a whole-head shot about 0.03.
+    public static let minPupilFraction = 0.08
+
+    /// Adds `eye_too_small` when no pupil-sized dark disc is found. `frame` is the whole photo or
+    /// preview downscaled (about 160 px on the short side is plenty), not the centre crop.
+    public static func checkEyeSize(_ frame: GrayImage, report: inout QualityReport) {
+        if pupilFraction(frame) < minPupilFraction { report.failures.append("eye_too_small") }
+    }
+
+    /// Diameter of the largest round dark blob in the middle of the frame (the pupil), relative to
+    /// the short side; 0 when there is none. Dark areas touching the frame edge (background,
+    /// hands, shadows) and elongated shapes are ignored.
+    public static func pupilFraction(_ image: GrayImage) -> Double {
+        let w = image.width, h = image.height
+        guard w >= 8, h >= 8 else { return 0 }
+        // Darkest few percent plus a margin: the pupil is the darkest thing in an eye close-up.
+        var histogram = [Int](repeating: 0, count: 256)
+        for p in image.pixels { histogram[Int(p)] += 1 }
+        let target = image.pixels.count * 3 / 100
+        var seen = 0, low = 0
+        for (value, count) in histogram.enumerated() {
+            seen += count
+            if seen >= target { low = value; break }
+        }
+        let threshold = UInt8(min(90, low + 25))
+
+        var label = [Int32](repeating: 0, count: w * h)
+        var best = 0.0
+        var next: Int32 = 0
+        var stack: [Int] = []
+        for start in 0..<(w * h) where label[start] == 0 && image.pixels[start] < threshold {
+            next += 1
+            label[start] = next
+            stack.append(start)
+            var count = 0
+            var minX = w, maxX = 0, minY = h, maxY = 0
+            var touchesEdge = false
+            while let i = stack.popLast() {
+                count += 1
+                let x = i % w, y = i / w
+                minX = min(minX, x); maxX = max(maxX, x); minY = min(minY, y); maxY = max(maxY, y)
+                if x == 0 || y == 0 || x == w - 1 || y == h - 1 { touchesEdge = true }
+                for n in [x > 0 ? i - 1 : -1, x < w - 1 ? i + 1 : -1, y > 0 ? i - w : -1, y < h - 1 ? i + w : -1]
+                where n >= 0 && label[n] == 0 && image.pixels[n] < threshold {
+                    label[n] = next
+                    stack.append(n)
+                }
+            }
+            let bw = maxX - minX + 1, bh = maxY - minY + 1
+            let aspect = Double(max(bw, bh)) / Double(min(bw, bh))
+            let fill = Double(count) / Double(bw * bh)
+            let cx = Double(minX + maxX) / 2 / Double(w), cy = Double(minY + maxY) / 2 / Double(h)
+            let central = (0.2...0.8).contains(cx) && (0.2...0.8).contains(cy)
+            guard !touchesEdge, central, aspect <= 1.8, fill >= 0.45 else { continue }
+            let diameter = (4 * Double(count) / Double.pi).squareRoot() / Double(min(w, h))
+            best = max(best, diameter)
+        }
+        return best
+    }
+
     /// Human-readable fix for each failure code, shown on the capture screen.
     public static func advice(for failure: String) -> String {
         switch failure {
@@ -110,6 +171,7 @@ public enum Quality {
         case "too_dark": return "Too dark: add diffused light"
         case "too_bright": return "Too bright: move out of direct sun"
         case "too_small": return "Move closer"
+        case "eye_too_small": return "Move closer: the eye should fill the circle"
         default: return failure
         }
     }

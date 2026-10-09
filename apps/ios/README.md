@@ -13,7 +13,10 @@ bird per session, an on-device quality gate, ring OCR, and offline-first upload 
    early records the rest as "not captured".
 3. **Capture screen**: live preview with a guide shape (a circle for the eye), a live quality chip
    (sharpness, glare, brightness, the same checks as `birdreid.capture.quality`) and **auto-capture**
-   once the shot has been steady and sharp for a few frames. Every still is assessed again, saved
+   once the shot has been steady and sharp for a few frames. Preview and still are measured on the
+   same centre square (40 % of the short side), the still resampled to 512 px so a sharp 24/48 MP
+   photo isn't scored blurry. Eye views also need a pupil-sized dark disc in the middle of the
+   frame (at least 8 % of the short side), so a whole-head shot doesn't pass as an iris photo. Every still is assessed again, saved
    with exposure metadata, and the best passing shot of each view is marked `is_best`.
    No flash is ever fired (welfare rule for eye work). Tap to focus.
 4. **Ring OCR**: on the ring step, Apple Vision reads the code live and from each ring photo, checks
@@ -27,7 +30,7 @@ bird per session, an on-device quality gate, ring OCR, and offline-first upload 
    (Vision OCR) sends it to the ring, and a bundled `RegionClassifier` Core ML model, once trained,
    overrides the walk-through position when confident. A confident ring read against the registry
    is taken without a pop-up. **See, sort and share photos** afterwards shows every photo under its
-   part: tap one for a full-screen viewer (swipe, pinch to zoom) where it can be moved (`source = "operator"`) or accept all. Tapping a checklist row still opens a camera
+   part: tap one for a full-screen viewer (swipe, pinch to zoom) where it can be moved; "Swap left/right" fixes a region whose sides were confused (`source = "operator"`) or accept all. Tapping a checklist row still opens a camera
    for just that view (`source = "checklist"`). The server re-classifies every photo regardless.
 6. **Upload**: on Finish, images and then `session.json` are queued. The queue survives restarts,
    retries with back-off, and hands files to a background `URLSession`, so uploads finish even with

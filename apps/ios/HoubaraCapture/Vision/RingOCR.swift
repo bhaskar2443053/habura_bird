@@ -45,21 +45,41 @@ enum RingOCR {
         } catch {
             return []
         }
-        let observations = request.results ?? []
+        // Biggest text first: in a ring photo the ring code is the largest lettering, while cage
+        // cards, sleeves and reader labels carry smaller text (a cage card was once read as the
+        // ring). The registry match keeps this order for equally good reads.
+        let observations = (request.results ?? [])
+            .sorted { $0.boundingBox.height > $1.boundingBox.height }
         var codes: [String] = []
         for observation in observations {
-            for candidate in observation.topCandidates(3) {
+            for candidate in observation.topCandidates(3) where !looksLikeLabel(candidate.string) {
                 codes.append(RingRegistry.normalize(candidate.string))
             }
         }
-        // Codes split over two lines ("HB" / "1023") are also tried joined, top-to-bottom.
-        let lines = observations
-            .sorted { $0.boundingBox.midY > $1.boundingBox.midY }
-            .compactMap { $0.topCandidates(1).first.map { RingRegistry.normalize($0.string) } }
-        if lines.count > 1 { codes.append(lines.joined()) }
+        // A code split over two lines ("HB" / "1023") is also tried joined, top-to-bottom, but only
+        // for two short lines of similar size; joining a card's lines makes up codes.
+        if observations.count >= 2 {
+            let pair = observations.prefix(2).sorted { $0.boundingBox.midY > $1.boundingBox.midY }
+            let heights = pair.map(\.boundingBox.height)
+            let parts = pair.compactMap { $0.topCandidates(1).first.map { RingRegistry.normalize($0.string) } }
+            let joined = parts.joined()
+            if parts.count == 2, heights.min()! > heights.max()! * 0.6, (3...10).contains(joined.count) {
+                codes.append(joined)
+            }
+        }
+        codes = codes.filter { (2...10).contains($0.count) }
         var unique: [String] = []
-        for code in codes where code.count >= 2 && !unique.contains(code) { unique.append(code) }
+        for code in codes where !unique.contains(code) { unique.append(code) }
         return unique
+    }
+
+    /// Text that is clearly not a ring code: several words, or a long run of letters
+    /// ("PEN 4 FEMALE", "NPRT ONLY").
+    private static func looksLikeLabel(_ text: String) -> Bool {
+        let words = text.split(whereSeparator: { $0.isWhitespace || $0 == ":" || $0 == "/" })
+        if words.count > 2 { return true }
+        let letters = text.filter(\.isLetter).count
+        return letters > 6 || text.count > 14
     }
 }
 
