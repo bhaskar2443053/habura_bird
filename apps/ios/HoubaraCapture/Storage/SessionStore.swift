@@ -110,7 +110,11 @@ final class SessionStore: ObservableObject {
 
 /// Small, cached thumbnails so the checklist doesn't decode 12 MP JPEGs on scroll.
 enum Thumbnails {
-    private static let cache = NSCache<NSString, UIImage>()
+    private static let cache: NSCache<NSString, UIImage> = {
+        let cache = NSCache<NSString, UIImage>()
+        cache.totalCostLimit = 150_000_000  // decoded bytes; full-screen photos are ~20 MB each
+        return cache
+    }()
 
     static func load(_ url: URL, maxPixel: Int = 240) async -> UIImage? {
         let key = "\(url.path)#\(maxPixel)" as NSString
@@ -125,7 +129,7 @@ enum Thumbnails {
             guard let cg = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) else { return nil }
             return UIImage(cgImage: cg)
         }.value
-        if let image { cache.setObject(image, forKey: key) }
+        if let image, let cg = image.cgImage { cache.setObject(image, forKey: key, cost: cg.bytesPerRow * cg.height) }
         return image
     }
 }

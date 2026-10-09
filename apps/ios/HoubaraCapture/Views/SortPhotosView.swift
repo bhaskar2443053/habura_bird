@@ -23,12 +23,15 @@ struct PartChoice: Identifiable, Hashable {
 }
 
 /// After the bird is released: every photo under the body part it was sorted into. Tap a photo to
-/// move it; "All correct" accepts the automatic sorting.
+/// see it full screen and move it; "All correct" accepts the automatic sorting. Share exports the
+/// whole session (AirDrop, Files, Photos).
 struct SortPhotosView: View {
     let sessionId: String
     @EnvironmentObject private var model: AppModel
     @EnvironmentObject private var store: SessionStore
-    @State private var editing: Shot?
+    @State private var viewing: Shot?
+    @State private var sharing: ShareItems?
+    @State private var exportError: String?
 
     private let columns = [GridItem(.adaptive(minimum: 96), spacing: 8)]
 
@@ -47,7 +50,7 @@ struct SortPhotosView: View {
             VStack(alignment: .leading, spacing: 18) {
                 if toCheck > 0 {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("\(toCheck) photos were sorted automatically. Tap any photo that is in the wrong place to move it.")
+                        Text("\(toCheck) photos were sorted automatically. Tap a photo to see it full screen and move it if it's in the wrong place.")
                             .font(.subheadline)
                         Button {
                             var updated = session
@@ -75,8 +78,13 @@ struct SortPhotosView: View {
                         }
                         LazyVGrid(columns: columns, alignment: .leading, spacing: 8) {
                             ForEach(shots) { shot in
-                                Button { editing = shot } label: { tile(shot) }
+                                Button { viewing = shot } label: { tile(shot) }
                                     .buttonStyle(.plain)
+                                    .contextMenu {
+                                        Button("Delete photo", systemImage: "trash", role: .destructive) {
+                                            store.deleteShot(shot, from: sessionId)
+                                        }
+                                    }
                             }
                         }
                     }
@@ -84,10 +92,30 @@ struct SortPhotosView: View {
             }
             .padding()
         }
-        .navigationTitle("Sort photos")
+        .navigationTitle("Photos")
         .navigationBarTitleDisplayMode(.inline)
-        .sheet(item: $editing) { shot in
-            MovePhotoSheet(sessionId: sessionId, shot: shot)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    do {
+                        sharing = ShareItems(urls: try store.exportFiles(session))
+                    } catch {
+                        exportError = error.localizedDescription
+                    }
+                } label: {
+                    Label("Share all", systemImage: "square.and.arrow.up")
+                }
+                .disabled(session.shots.isEmpty)
+            }
+        }
+        .fullScreenCover(item: $viewing) { shot in
+            PhotoViewer(sessionId: sessionId, selection: shot.id)
+        }
+        .sheet(item: $sharing) { ShareSheet(items: $0.urls) }
+        .alert("Couldn't export", isPresented: Binding(get: { exportError != nil }, set: { if !$0 { exportError = nil } })) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(exportError ?? "")
         }
     }
 

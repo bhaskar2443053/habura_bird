@@ -41,6 +41,7 @@ targets:
         LSSupportsOpeningDocumentsInPlace: true
         NSCameraUsageDescription: Photographs birds (eye, face, beak, plumage, feet and leg ring) for individual re-identification.
         NSLocationWhenInUseUsageDescription: Records where each capture session took place.
+        NSPhotoLibraryAddUsageDescription: Saves capture photos you export to your photo library.
 schemes:
   HoubaraCapture:
     build:

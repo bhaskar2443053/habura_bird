@@ -38,7 +38,7 @@ struct SessionView: View {
                                 Text("\(session.shots.count)")
                             }
                         } label: {
-                            Label("Sort photos", systemImage: "square.grid.2x2")
+                            Label("See, sort and share photos", systemImage: "square.grid.2x2")
                         }
                     }
                 }

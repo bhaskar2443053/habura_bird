@@ -26,8 +26,8 @@ bird per session, an on-device quality gate, ring OCR, and offline-first upload 
    the operator never goes back to the checklist while holding the bird. A ring code seen in a photo
    (Vision OCR) sends it to the ring, and a bundled `RegionClassifier` Core ML model, once trained,
    overrides the walk-through position when confident. A confident ring read against the registry
-   is taken without a pop-up. **Sort photos** afterwards shows every photo under its part: tap one
-   to move it (`source = "operator"`) or accept all. Tapping a checklist row still opens a camera
+   is taken without a pop-up. **See, sort and share photos** afterwards shows every photo under its
+   part: tap one for a full-screen viewer (swipe, pinch to zoom) where it can be moved (`source = "operator"`) or accept all. Tapping a checklist row still opens a camera
    for just that view (`source = "checklist"`). The server re-classifies every photo regardless.
 6. **Upload**: on Finish, images and then `session.json` are queued. The queue survives restarts,
    retries with back-off, and hands files to a background `URLSession`, so uploads finish even with
@@ -37,7 +37,11 @@ bird per session, an on-device quality gate, ring OCR, and offline-first upload 
    quality check reads every 4th frame (every 6th when hot), hot phones take balanced rather than
    multi-frame stills, start no new uploads, and show a warning. The camera pauses after 45 s
    without a photo or tap (20 s when hot) and at the critical thermal state; one tap resumes.
-8. **USB-C NIR camera** (iPad on iPadOS 17+, possibly iPhone on iOS 26): plugging in a UVC camera
+8. **Export**: "Share all" on the photos screen sends a session's photos, named by ring, region and
+   view (`HB1023_face_left_1.jpg`), plus `session.json` to the iOS share sheet: AirDrop, Save to
+   Files or Save Images to Photos. The viewer shares or saves a single photo. The raw session
+   folders are also visible in the Files app under On My iPhone > Houbara Capture.
+9. **USB-C NIR camera** (iPad on iPadOS 17+, possibly iPhone on iOS 26): plugging in a UVC camera
    switches to it automatically, and the operator marks shots as Near-IR or Visible.
 
 Object keys match the server: `raw/{site}/{session_id}/{region}/{view}_{spectrum}_{shot_id}.jpg`
