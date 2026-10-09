@@ -1,8 +1,8 @@
 region: iris
 spectra: [rgb, nir]
 views:
-  - {name: left_eye, hint: "Fill the circle with the left eye; keep the IR ring on if attached"}
-  - {name: right_eye, hint: "Fill the circle with the right eye"}
+  - {name: left_eye, hint: "The bird's own left eye (head upright: beak points to the left of the screen). Fill the circle; keep the IR ring on if attached"}
+  - {name: right_eye, hint: "The bird's own right eye (head upright: beak points to the right of the screen). Fill the circle"}
 min_shots_per_view: 2
 quality:
   min_sharpness: 120

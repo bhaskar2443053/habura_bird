@@ -17,3 +17,30 @@ jobs:
       - run: ruff check .
       - run: ruff format --check .
       - run: pytest -q
+
+  capturekit:
+    # Platform-independent core of the iOS app; runs on Linux, so it's cheap.
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/ios/Packages/CaptureKit
+    steps:
+      - uses: actions/checkout@v4
+      - run: swift --version
+      - run: swift test
+
+  ios-app:
+    runs-on: macos-15
+    defaults:
+      run:
+        working-directory: apps/ios
+    steps:
+      - uses: actions/checkout@v4
+      - run: brew install xcodegen
+      - run: xcodegen
+      - run: |
+          xcodebuild build \
+            -project HoubaraCapture.xcodeproj \
+            -scheme HoubaraCapture \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO
